@@ -1,0 +1,74 @@
+name: DoorDash Fee Service CI - Part I
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t doordash-fee-service .
+
+      - name: Run container
+        run: |
+          docker run -d \
+            -p 8080:8080 \
+            --name fee-service \
+            doordash-fee-service
+
+      - name: Wait for API to be ready
+        run: |
+          echo "Waiting for API to be ready on http://localhost:8080 ..."
+          for i in {1..10}; do
+            if curl -sSf http://localhost:8080/status/ > /dev/null; then
+              echo "API is up ✅"
+              exit 0
+            fi
+            echo "API not ready yet, retrying in 3s..."
+            sleep 3
+          done
+          echo "API failed to start ❌"
+          docker logs fee-service || true
+          exit 1
+
+      - name: Smoke test root endpoint
+        run: |
+          curl -sSf http://localhost:8080/ || exit 1
+
+      - name: Smoke test status endpoint
+        run: |
+          curl -sSf http://localhost:8080/status/ || exit 1
+
+      - name: Smoke test estimate-time endpoint
+        run: |
+          curl -sSf http://localhost:8080/estimate-time/5 || exit 1
+
+      - name: Smoke test calculate-fee endpoint
+        run: |
+          curl -sSf -X POST http://localhost:8080/calculate-fee/ \
+            -H "Content-Type: application/json" \
+            -d '{"distance_km": 10.5, "weight_kg": 2.0}' \
+            || exit 1
+
+      - name: Show running containers
+        run: docker ps
+
+      - name: Show container logs (for debugging)
+        if: always()
+        run: docker logs fee-service || true
+
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker stop fee-service || true
+          docker rm fee-service || true
+          docker ps -a
