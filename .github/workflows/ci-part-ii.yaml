@@ -48,7 +48,7 @@ jobs:
       - name: Install test dependencies
         run: |
           pip install --upgrade pip
-          pip install pytest httpx
+          pip install pytest httpx fastapi
 
       - name: Run pytest suite
         run: pytest -v
