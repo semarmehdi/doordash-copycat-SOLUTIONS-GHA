@@ -10,7 +10,7 @@ COPY . /app
 # Install the Python dependencies
 RUN pip install -r requirements.txt
 
-# Make port 8090 available to the world outside this container
+# Make port 8080 available to the world outside this container
 EXPOSE 8080
 
 # Run the application
